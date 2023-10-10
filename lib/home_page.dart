@@ -1,5 +1,7 @@
+import 'package:app_anuncio/persistencia/file_persistance.dart';
 import 'package:flutter/material.dart';
 import 'package:app_anuncio/model/anuncio.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'cadastro_anuncio.dart';
 
@@ -11,7 +13,30 @@ class home_page extends StatefulWidget {
 }
 
 class _home_pageState extends State<home_page> {
+  FilePersistance persistence = FilePersistance();
   List<Anuncio> _anuncio = List.empty(growable: true);
+
+  @override
+  void didChangeDependencies() {
+    // TODO: implement didChangeDependencies
+    super.didChangeDependencies();
+    persistence.readData().then((data) {
+      setState(() {
+        if (data != null) {
+          _anuncio = data;
+        }
+      });
+    });
+  }
+
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   persistence.readData().then((data) {
+  //     _anuncio = data;
+  //   });
+  // }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -34,7 +59,7 @@ class _home_pageState extends State<home_page> {
         backgroundColor: Colors.blue[500],
       ),
       body: Container(
-        child: ListView.builder(
+        child: ListView.separated(
           itemCount: _anuncio.length,
           itemBuilder: (context, index) {
             Anuncio anuncio = _anuncio[index];
@@ -65,6 +90,7 @@ class _home_pageState extends State<home_page> {
                 if (direction == DismissDirection.startToEnd) {
                   setState(() {
                     _anuncio.removeAt(index);
+                    persistence.saveData(_anuncio);
                   });
                 }
               },
@@ -79,6 +105,7 @@ class _home_pageState extends State<home_page> {
                     setState(() {
                       _anuncio.removeAt(index);
                       _anuncio.insert(index, editedAnuncio);
+                      persistence.saveData(_anuncio);
                     });
                   }
                   return false;
@@ -87,18 +114,57 @@ class _home_pageState extends State<home_page> {
                 }
               },
               child: ListTile(
+                leading: anuncio.image != null
+                    ? CircleAvatar(
+                        child: ClipOval(
+                          child: Image.file(anuncio.image!),
+                        ),
+                      )
+                    : const SizedBox(),
                 title: Text(
-                  "Titulo: " +
-                      anuncio.titulo +
-                      "\n" +
-                      "Preço: " +
-                      "R\$" +
-                      anuncio.preco.toString(),
+                  "Titulo: " + anuncio.titulo,
                   style: TextStyle(),
                 ),
+                subtitle: Text("Preco: " + anuncio.preco.toString(),
+                    style: TextStyle()),
+                  
+                onLongPress: async (){
+                  showBottomSheet(context: context, 
+                  builder: (context){
+                    return Container(
+                      padding: EdgeInsets.all(10.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListTile(
+                            leading: Icon(Icons.email),
+                            title: Text("Enviar por email"),
+                            onTap:  () async {
+                              final Uri params = Uri (
+                                scheme: 'mailto',
+                                path: "pedro.sergio@estudante.ifgoiano.edu.br",
+                                queryParameters: {
+                                  "subject": "Fale conosco",
+                                  "body": "Digite sua mensagem..."
+                                }
+                              );
+                              final url = params.toString();
+                              if(!await.launch(url)){
+                                  throw 'Não pode rodar $url';
+                                }
+                              Navigator.pop(context);
+                            },
+                            
+                          )
+                        ],
+                      ),
+                      );
+                  });
+                }
               ),
             );
           },
+          separatorBuilder: (context, index) => Divider(),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -112,6 +178,7 @@ class _home_pageState extends State<home_page> {
           if (newAnuncio != null) {
             setState(() {
               _anuncio.add(newAnuncio);
+              persistence.saveData(_anuncio);
             });
           }
         },
