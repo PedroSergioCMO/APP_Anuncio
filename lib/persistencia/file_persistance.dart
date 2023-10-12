@@ -14,33 +14,29 @@ class FilePersistance {
 
   Future saveData(List<Anuncio> anuncios) async {
     File localFile = await _getDirectory();
-    List<Map<String, dynamic>> data = [];
+    List mapAnuncios = List.empty(growable: true);
 
     anuncios.forEach((anuncio) {
-      data.add(anuncio.topMap());
+      mapAnuncios.add(anuncio.topMap());
     });
 
-    String json = jsonEncode(data);
-
-    return localFile.writeAsStringSync(json);
+    String data = json.encode(mapAnuncios);
+    if (localFile.writeAsString(data) != null) return true;
+    return false;
   }
 
-  Future readData() async {
-    try {
-      File localData = await _getDirectory();
-      String json = localData.readAsStringSync();
+  Future getData() async {
+    final localFile = await _getDirectory();
+    List mapAnuncios = List.empty(growable: true);
+    List anuncios = List<Anuncio>.empty(growable: true);
+    String data = await localFile.readAsString();
 
-      List<dynamic> data = jsonDecode(json);
-      List<Anuncio> anuncios = List.empty(growable: true);
+    mapAnuncios = json.decode(data);
 
-      data.forEach((element) {
-        anuncios.add(Anuncio.fromJson(element));
-      });
+    mapAnuncios.forEach((mapAnuncio) {
+      anuncios.add(Anuncio.fromMap(mapAnuncio));
+    });
 
-      return anuncios;
-    } catch (error) {
-      print(error);
-      return null;
-    }
+    return anuncios;
   }
 }

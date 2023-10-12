@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:app_anuncio/model/anuncio.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 
 class cadastro_anuncio extends StatefulWidget {
   Anuncio? nuncio;
@@ -15,17 +16,18 @@ class _cadastro_anuncioState extends State<cadastro_anuncio> {
   TextEditingController _tituloController = TextEditingController();
   TextEditingController _descricaoController = TextEditingController();
   TextEditingController _precoController = TextEditingController();
-  ImagePicker _picker = ImagePicker();
   File? _image;
 
   @override
   void initState() {
     super.initState();
     if (widget.nuncio != null) {
-      _image = widget.nuncio!.image;
-      _tituloController.text = widget.nuncio!.titulo;
-      _descricaoController.text = widget.nuncio!.descricao;
-      _precoController.text = widget.nuncio!.preco.toString();
+      setState(() {
+        _image = widget.nuncio!.image;
+        _tituloController.text = widget.nuncio!.titulo;
+        _descricaoController.text = widget.nuncio!.descricao;
+        _precoController.text = widget.nuncio!.preco.toString();
+      });
     }
   }
 
@@ -65,11 +67,13 @@ class _cadastro_anuncioState extends State<cadastro_anuncio> {
                       ),
               ),
               onTap: () async {
-                XFile? image =
+                ImagePicker _picker = ImagePicker();
+                XFile? _pickedImage =
                     await _picker.pickImage(source: ImageSource.camera);
-                if (image != null) {
+                if (_pickedImage != null) {
+                  _image = File(_pickedImage.path);
                   setState(() {
-                    _image = File(image.path);
+                    //   _image = File(_pickedImage.path);
                   });
                 }
               },
@@ -142,19 +146,42 @@ class _cadastro_anuncioState extends State<cadastro_anuncio> {
                         child: Container(
                           padding: EdgeInsets.all(20),
                           child: ElevatedButton(
-                            onPressed: () {
+                            onPressed: () async {
+                              File? savedImage;
+                              if (_image != null) {
+                                Directory directory =
+                                    await getApplicationDocumentsDirectory();
+                                String localPath = directory.path;
+
+                                String uniqueID = UniqueKey().toString();
+
+                                savedImage = await _image!
+                                    .copy("$localPath/image_$uniqueID.jpg");
+                              }
+
                               if (_formkey.currentState!.validate()) {
-                                Anuncio newAnuncio = Anuncio(
-                                  _tituloController.text,
-                                  _descricaoController.text,
-                                  double.parse(_precoController.text),
-                                  File(_image!.path),
-                                );
-                                Navigator.pop(context, newAnuncio);
+                                String titulo =
+                                    _tituloController.text.toString();
+                                String descricao =
+                                    _descricaoController.text.toString();
+                                double preco =
+                                    double.parse(_precoController.text);
+                                if (widget.nuncio == null) {
+                                  Anuncio newAnuncio = Anuncio(
+                                      titulo, descricao, preco,
+                                      image: savedImage);
+                                  Navigator.pop(context, newAnuncio);
+                                } else {
+                                  widget.nuncio!.titulo = titulo;
+                                  widget.nuncio!.descricao = descricao;
+                                  widget.nuncio!.preco = preco;
+                                  widget.nuncio!.image = savedImage;
+                                  Navigator.pop(context, widget.nuncio);
+                                }
                               }
                             },
                             child: Text(
-                              "Confirmar",
+                              widget.nuncio == null ? "Cadastrar" : "Editar",
                               style: TextStyle(color: Colors.white),
                             ),
                             style: ElevatedButton.styleFrom(

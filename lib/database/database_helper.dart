@@ -1,4 +1,6 @@
 import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:app_anuncio/database/anuncio_helper.dart';
 
 class DatabaseHelper {
   Database? _db;
@@ -31,7 +33,7 @@ class DatabaseHelper {
   }
 
   Future _onCreateDB(Database db, int version) async {
-    await db.execute(AnuncioHelper.creatScript);
+    await db.execute(AnuncioHelper.createScript);
   }
 
   Future _onUpgradeDB(Database db, int oldVersion, int newVersion) async {

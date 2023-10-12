@@ -1,7 +1,9 @@
+import 'package:app_anuncio/database/anuncio_helper.dart';
 import 'package:app_anuncio/persistencia/file_persistance.dart';
 import 'package:flutter/material.dart';
 import 'package:app_anuncio/model/anuncio.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:app_anuncio/database/ianuncio.dart';
 
 import 'cadastro_anuncio.dart';
 
@@ -14,17 +16,16 @@ class home_page extends StatefulWidget {
 
 class _home_pageState extends State<home_page> {
   FilePersistance persistence = FilePersistance();
-  List<Anuncio> _anuncio = List.empty(growable: true);
+  List<Anuncio> _anuncio = List<Anuncio>.empty(growable: true);
+  IAnuncio helper = AnuncioHelper();
 
   @override
   void didChangeDependencies() {
     // TODO: implement didChangeDependencies
     super.didChangeDependencies();
-    persistence.readData().then((data) {
+    helper.getAll().then((data) {
       setState(() {
-        if (data != null) {
-          _anuncio = data;
-        }
+        _anuncio = data;
       });
     });
   }
@@ -65,7 +66,7 @@ class _home_pageState extends State<home_page> {
             Anuncio anuncio = _anuncio[index];
 
             return Dismissible(
-              key: UniqueKey(),
+              key: Key(anuncio.id.toString()),
               background: Container(
                 color: Colors.red,
                 child: Align(
@@ -86,11 +87,21 @@ class _home_pageState extends State<home_page> {
                   ),
                 ),
               ),
-              onDismissed: (direction) {
+              onDismissed: (direction) async {
                 if (direction == DismissDirection.startToEnd) {
+                  int? result = await helper.delete(anuncio);
+                  String deleteText = "Erro ao excluir anuncio";
                   setState(() {
-                    _anuncio.removeAt(index);
-                    persistence.saveData(_anuncio);
+                    if (result != null) {
+                      _anuncio.remove(anuncio);
+                      deleteText = "Anuncio removido com sucesso";
+                    }
+
+                    SnackBar snackBar = SnackBar(
+                      content: Text(deleteText),
+                      backgroundColor: Colors.red,
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(snackBar);
                   });
                 }
               },
@@ -102,10 +113,21 @@ class _home_pageState extends State<home_page> {
                           builder: (context) =>
                               cadastro_anuncio(nuncio: anuncio)));
                   if (editedAnuncio != null) {
+                    int? result = await helper.edit(editedAnuncio);
+                    String editText = "Erro ao editar o Anuncio";
+
                     setState(() {
-                      _anuncio.removeAt(index);
-                      _anuncio.insert(index, editedAnuncio);
-                      persistence.saveData(_anuncio);
+                      if (result != null) {
+                        _anuncio.remove(anuncio);
+                        _anuncio.insert(index, editedAnuncio);
+                        editText = "Anuncio editado com sucesso!";
+                      }
+
+                      SnackBar snackBar = SnackBar(
+                        content: Text(editText),
+                        backgroundColor: Colors.orange,
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(snackBar);
                     });
                   }
                   return false;
@@ -114,54 +136,71 @@ class _home_pageState extends State<home_page> {
                 }
               },
               child: ListTile(
-                leading: anuncio.image != null
-                    ? CircleAvatar(
-                        child: ClipOval(
-                          child: Image.file(anuncio.image!),
-                        ),
-                      )
-                    : const SizedBox(),
-                title: Text(
-                  "Titulo: " + anuncio.titulo,
-                  style: TextStyle(),
-                ),
-                subtitle: Text("Preco: " + anuncio.preco.toString(),
-                    style: TextStyle()),
-                  
-                onLongPress: async (){
-                  showBottomSheet(context: context, 
-                  builder: (context){
-                    return Container(
-                      padding: EdgeInsets.all(10.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ListTile(
-                            leading: Icon(Icons.email),
-                            title: Text("Enviar por email"),
-                            onTap:  () async {
-                              final Uri params = Uri (
-                                scheme: 'mailto',
-                                path: "pedro.sergio@estudante.ifgoiano.edu.br",
-                                queryParameters: {
-                                  "subject": "Fale conosco",
-                                  "body": "Digite sua mensagem..."
-                                }
-                              );
-                              final url = params.toString();
-                              if(!await.launch(url)){
-                                  throw 'Não pode rodar $url';
-                                }
-                              Navigator.pop(context);
-                            },
-                            
-                          )
-                        ],
-                      ),
-                      );
-                  });
-                }
-              ),
+                  leading: anuncio.image != null
+                      ? CircleAvatar(
+                          child: ClipOval(
+                            child: Image.file(anuncio.image!),
+                          ),
+                        )
+                      : const SizedBox(),
+                  title: Text(
+                    "Titulo: " + anuncio.titulo,
+                    style: TextStyle(),
+                  ),
+                  subtitle: Text("Preco: " + anuncio.preco.toString(),
+                      style: TextStyle()),
+                  onLongPress: () async {
+                    showBottomSheet(
+                        context: context,
+                        builder: (context) {
+                          return Container(
+                            padding: EdgeInsets.all(10.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ListTile(
+                                  leading: Icon(Icons.email),
+                                  title: Text("Enviar por e-mail"),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    Anuncio anuncio = _anuncio[index];
+
+                                    final Uri emailUri = Uri(
+                                        scheme: 'mailto',
+                                        path: "pedrosergiocmo@gmail.com",
+                                        queryParameters: {
+                                          "subject": "Duvidas",
+                                          "body":
+                                              "Duvida sobre o produto ${anuncio.titulo}"
+                                        });
+                                    final Url = emailUri.toString();
+                                    launch(Url);
+                                  },
+                                ),
+                                ListTile(
+                                  leading: Icon(Icons.email),
+                                  title: Text("Enviar por SMS"),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    Anuncio anuncio = _anuncio[index];
+
+                                    final Uri smslUri = Uri(
+                                        scheme: 'sms',
+                                        path: "+556599999-3333",
+                                        queryParameters: {
+                                          "body":
+                                              "Você ganhou um ${anuncio.titulo}, Envie um pix para este numero e ganhe mais 200.000 reias"
+                                        });
+                                    final Url = smslUri.toString();
+                                    launch(Url);
+                                    Navigator.pop(context);
+                                  },
+                                )
+                              ],
+                            ),
+                          );
+                        });
+                  }),
             );
           },
           separatorBuilder: (context, index) => Divider(),
@@ -169,18 +208,43 @@ class _home_pageState extends State<home_page> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          Anuncio? newAnuncio = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => cadastro_anuncio(),
-            ),
-          );
-          if (newAnuncio != null) {
-            setState(() {
-              _anuncio.add(newAnuncio);
-              persistence.saveData(_anuncio);
-            });
+          try {
+            Anuncio? anuncio = await Navigator.push(context,
+                MaterialPageRoute(builder: (context) => cadastro_anuncio()));
+            // Navigator.pushNamed(context, "/cadastro");
+
+            if (anuncio != null) {
+              Anuncio? savedAnuncio = await helper.save(anuncio);
+              String savedText = "Erro ao salvar tarefa no DB";
+              setState(() {
+                if (savedAnuncio != null) {
+                  _anuncio.add(savedAnuncio);
+                  savedText = "Tarefa criada com sucesso";
+                }
+
+                SnackBar snackBar = SnackBar(
+                  content: Text(savedText),
+                  backgroundColor: Colors.green,
+                );
+                ScaffoldMessenger.of(context).showSnackBar(snackBar);
+              });
+            }
+          } catch (error) {
+            print(error.toString());
           }
+
+          // Anuncio? newAnuncio = await Navigator.push(
+          //   context,
+          //   MaterialPageRoute(
+          //     builder: (context) => cadastro_anuncio(),
+          //   ),
+          // );
+          // if (newAnuncio != null) {
+          //   setState(() {
+          //     _anuncio.add(newAnuncio);
+          //     persistence.saveData(_anuncio);
+          //   });
+          // }
         },
         child: Icon(Icons.add),
         mini: false,

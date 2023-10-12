@@ -1,18 +1,33 @@
 import 'package:app_anuncio/database/database_helper.dart';
+import 'package:app_anuncio/database/ianuncio.dart';
 import 'package:app_anuncio/model/anuncio.dart';
+import 'package:sqflite/sqflite.dart';
 
-class AnuncioHelper implements Anuncio {
+class AnuncioHelper implements IAnuncio {
   static final String tableName = "Anuncios";
   static final String idColumn = "id";
   static final String tituloColumn = "titulo";
   static final String descricaoColumn = "descricao";
   static final String precoColumn = "preco";
   static final String ativoColumn = "ativo";
+  static final String imageColumn = "image";
 
+  // static get createScript {
+  //   return "CREATE TABLE $tableName($idColumn INTEGER PRIMARY KEY AUTOINCREMENT, " +
+  //       "$tituloColumn TEXT NO NULL, $descricaoColumn TEXT NOT NULL, $precoColumn TEXT NOT NULL" +
+  //       "$ativoColumn INTEGER NOT NULL, $imageColumn STRING NULL);";
+  // }
   static get createScript {
-    return "CREATE TABLE $tableName($idColumn INTEGER PRIMARY KEY AUTOINCREMENT, " +
-        "$tituloColumn TEXT NO NULL, $descricaoColumn TEXT NOT NULL, $precoColumn TEXT NOT NULL" +
-        "$ativoColumn INTEGER NOT NULL)";
+    return '''
+    CREATE TABLE $tableName (
+      $idColumn INTEGER PRIMARY KEY AUTOINCREMENT,
+      $tituloColumn TEXT NOT NULL,
+      $descricaoColumn TEXT NOT NULL,
+      $precoColumn REAL NOT NULL,
+      $ativoColumn INTEGER NOT NULL,
+      $imageColumn STRING NULL
+    )
+  ''';
   }
 
   @override
@@ -52,11 +67,12 @@ class AnuncioHelper implements Anuncio {
         tituloColumn,
         descricaoColumn,
         precoColumn,
-        ativoColumn
+        ativoColumn,
+        imageColumn
       ]);
 
       for (Map mAnuncio in returnedAnuncios) {
-        anuncios.add(Anuncio.fromJson(mAnuncio));
+        anuncios.add(Anuncio.fromMap(mAnuncio));
       }
     }
     return anuncios;
@@ -72,12 +88,13 @@ class AnuncioHelper implements Anuncio {
             tituloColumn,
             descricaoColumn,
             precoColumn,
-            ativoColumn
+            ativoColumn,
+            imageColumn
           ],
           where: "id=?",
           whereArgs: [id]);
 
-      return Anuncio.fromJson(returnedAnuncio.first);
+      return Anuncio.fromMap(returnedAnuncio.first);
     }
     return null;
   }
